@@ -11,6 +11,7 @@
   ],
   "host_permissions": [
     "https://*.instructure.com/*",
+    "https://bcourses.berkeley.edu/*",
     "https://www.googleapis.com/*"
   ],
   "oauth2": {
@@ -38,7 +39,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.instructure.com/courses/*"],
+      "matches": [
+        "https://*.instructure.com/courses/*",
+        "https://bcourses.berkeley.edu/courses/*"
+      ],
       "js": ["fetch.js"],
       "run_at": "document_idle"
     }
