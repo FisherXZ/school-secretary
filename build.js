@@ -59,9 +59,10 @@ async function build() {
       outfile: 'dist/popup.js',
     });
 
-    // Content script (fetch)
+    // Content script (fetch) - must use IIFE format for Chrome
     await esbuild.build({
       ...buildOptions,
+      format: 'iife', // Override ESM format for content scripts
       entryPoints: ['src/popup/fetch.ts'],
       outfile: 'dist/fetch.js',
     });
@@ -92,6 +93,7 @@ if (isWatch) {
       
       const fetchCtx = await esbuild.context({
         ...buildOptions,
+        format: 'iife', // Override ESM format for content scripts
         entryPoints: ['src/popup/fetch.ts'],
         outfile: 'dist/fetch.js',
       });
