@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas Calendar Sync</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📅 Canvas Calendar Sync</h1>
+    </header>
+    
+    <!-- Auth Section -->
+    <section id="auth-section" class="hidden">
+      <p>Connect your Google Calendar to sync assignments</p>
+      <button id="auth-btn" class="primary-btn">
+        Connect Google Calendar
+      </button>
+    </section>
+    
+    <!-- Main Section (shown when authenticated) -->
+    <section id="main-section" class="hidden">
+      <!-- Current Course -->
+      <div id="current-course" class="card hidden">
+        <h2 id="course-name">Loading...</h2>
+        <p id="course-code"></p>
+        <p id="assignment-count"></p>
+        <button id="fetch-btn" class="secondary-btn">
+          Refresh Assignments
+        </button>
+      </div>
+      
+      <!-- No Course Warning -->
+      <div id="no-course" class="card warning hidden">
+        <p>⚠️ Navigate to a Canvas course page to sync assignments</p>
+      </div>
+      
+      <!-- Assignment List -->
+      <div id="assignments-section" class="hidden">
+        <h3>Assignments to Sync</h3>
+        <ul id="assignment-list"></ul>
+        
+        <button id="sync-btn" class="primary-btn">
+          Sync to Google Calendar
+        </button>
+      </div>
+      
+      <!-- Status -->
+      <div id="status" class="hidden"></div>
+      
+      <!-- Saved Courses -->
+      <div id="saved-courses" class="hidden">
+        <h3>Saved Courses</h3>
+        <ul id="course-list"></ul>
+      </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer>
+      <button id="logout-btn" class="text-btn hidden">Disconnect</button>
+    </footer>
+  </div>
+  
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
+

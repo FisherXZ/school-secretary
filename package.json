@@ -1,0 +1,15 @@
+{
+  "name": "canvas-calendar-sync",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build.js",
+    "watch": "node build.js --watch",
+    "dev": "npm run watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.254",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.0"
+  }
+}
+
