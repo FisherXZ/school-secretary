@@ -143,3 +143,45 @@ footer {
   margin-top: 16px;
 }
 
+/* Digest Section Styles */
+#digest-section h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.email-preview {
+  font-size: 13px;
+  color: #4285f4;
+  font-weight: 500;
+  margin: 8px 0;
+}
+
+#digest-signup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#enable-digest-btn {
+  margin-bottom: 0;
+}
+
+#skip-digest-btn {
+  margin-top: 4px;
+}
+
+.success-msg {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+#digest-settings-btn {
+  display: block;
+  margin: 0 auto;
+}
+

@@ -7,6 +7,13 @@ const authSection = document.getElementById('auth-section')!;
 const mainSection = document.getElementById('main-section')!;
 const authBtn = document.getElementById('auth-btn')!;
 const logoutBtn = document.getElementById('logout-btn')!;
+const digestSection = document.getElementById('digest-section')!;
+const userEmailEl = document.getElementById('user-email')!;
+const digestSignup = document.getElementById('digest-signup')!;
+const digestEnabled = document.getElementById('digest-enabled')!;
+const enableDigestBtn = document.getElementById('enable-digest-btn')!;
+const skipDigestBtn = document.getElementById('skip-digest-btn')!;
+const digestSettingsBtn = document.getElementById('digest-settings-btn')!;
 const currentCourse = document.getElementById('current-course')!;
 const noCourse = document.getElementById('no-course')!;
 const courseName = document.getElementById('course-name')!;
@@ -18,6 +25,14 @@ const assignmentList = document.getElementById('assignment-list')!;
 const syncBtn = document.getElementById('sync-btn')!;
 const status = document.getElementById('status')!;
 
+// Supabase config
+// TODO: Replace these with your actual Supabase credentials from the Supabase dashboard
+const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // e.g., 'https://abcdefghij.supabase.co'
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Get from Settings → API
+
+// Google OAuth config (from manifest.json)
+const GOOGLE_CLIENT_ID = '862922347346-q22513216dpmfuu54pp0vdp9jgengarc.apps.googleusercontent.com';
+
 // State
 let currentCourseData: SavedCourse | null = null;
 let isAuthenticated = false;
@@ -27,9 +42,10 @@ async function init() {
   // Check if authenticated
   const token = await checkAuth();
   isAuthenticated = !!token;
-  
+
   if (isAuthenticated) {
     showMainSection();
+    await showDigestSignup(); // Show digest signup if applicable
     await checkCurrentPage();
     loadSavedCourses();
   } else {
@@ -212,12 +228,224 @@ function hideStatus() {
   status.classList.add('hidden');
 }
 
+// ============================================================================
+// Digest Functionality
+// ============================================================================
+
+// Get user's email from Google
+async function getUserEmail(token: string): Promise<string | null> {
+  try {
+    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    return data.email || null;
+  } catch (error) {
+    console.error('Error fetching user email:', error);
+    return null;
+  }
+}
+
+// Show digest signup prompt
+async function showDigestSignup() {
+  // Check if user already skipped or enabled digest
+  const storage = await chrome.storage.local.get(['digestSkipped', 'digestEnabled']);
+
+  if (storage.digestSkipped || storage.digestEnabled) {
+    // Already made a choice, don't show again
+    if (storage.digestEnabled) {
+      // Show that digest is enabled
+      digestSection.classList.remove('hidden');
+      digestSignup.classList.add('hidden');
+      digestEnabled.classList.remove('hidden');
+    }
+    return;
+  }
+
+  // Get user's email
+  const token = await checkAuth();
+  if (!token) return;
+
+  const email = await getUserEmail(token);
+  if (!email) return;
+
+  // Show the signup section
+  digestSection.classList.remove('hidden');
+  userEmailEl.textContent = email;
+
+  // Store email temporarily for signup
+  await chrome.storage.local.set({
+    pendingDigestSignup: { email, token }
+  });
+
+  // Check if user already exists in database
+  const exists = await checkExistingUser(email);
+  if (exists) {
+    digestSignup.classList.add('hidden');
+    digestEnabled.classList.remove('hidden');
+    await chrome.storage.local.set({ digestEnabled: true, digestEmail: email });
+  }
+}
+
+// Check if user already exists in Supabase
+async function checkExistingUser(email: string): Promise<boolean> {
+  // Skip check if credentials not configured
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') return false;
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=id,digest_enabled`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+
+    if (!response.ok) return false;
+
+    const data = await response.json();
+    return data.length > 0 && data[0].digest_enabled === true;
+  } catch (error) {
+    console.error('Error checking existing user:', error);
+    return false;
+  }
+}
+
+// Enable digest signup
+async function enableDigest() {
+  enableDigestBtn.disabled = true;
+  enableDigestBtn.textContent = 'Enabling...';
+
+  const storage = await chrome.storage.local.get('pendingDigestSignup');
+  const { email, token } = storage.pendingDigestSignup;
+
+  if (!email || !token) {
+    alert('Error: Missing authentication. Please try reconnecting your Google Calendar.');
+    enableDigestBtn.disabled = false;
+    enableDigestBtn.textContent = 'Enable Digest';
+    return;
+  }
+
+  try {
+    // Get user's timezone from Google Calendar
+    const timezone = await fetchGoogleTimezone(token);
+
+    // TODO: Get refresh token for backend access
+    // NOTE: chrome.identity.getAuthToken() only provides access tokens, not refresh tokens.
+    // For the digest feature to work, we need a refresh token that the backend can use.
+    // This requires implementing a full OAuth2 flow with chrome.identity.launchWebAuthFlow.
+    // For now, we'll pass the access token, but this will need to be updated.
+    // See: https://developer.chrome.com/docs/extensions/reference/identity/
+    const refreshToken = token; // FIXME: This should be a real refresh token
+
+    // Call Supabase signup function
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/signup-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        email,
+        google_refresh_token: refreshToken,
+        timezone,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Signup failed');
+    }
+
+    const responseData = await response.json();
+
+    // Success - update UI
+    digestSignup.classList.add('hidden');
+    digestEnabled.classList.remove('hidden');
+
+    // Store that user has digest enabled
+    await chrome.storage.local.set({
+      digestEnabled: true,
+      digestEmail: email,
+      digestUserId: responseData.user_id,
+    });
+
+    // Clean up pending signup
+    await chrome.storage.local.remove('pendingDigestSignup');
+
+  } catch (error) {
+    console.error('Error enabling digest:', error);
+    enableDigestBtn.disabled = false;
+    enableDigestBtn.textContent = 'Enable Digest';
+    alert('Failed to enable digest. Please try again. Error: ' + (error as Error).message);
+  }
+}
+
+// Fetch timezone from Google Calendar settings
+async function fetchGoogleTimezone(token: string): Promise<string> {
+  try {
+    const response = await fetch(
+      'https://www.googleapis.com/calendar/v3/users/me/settings/timezone',
+      {
+        headers: { 'Authorization': `Bearer ${token}` },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Failed to fetch timezone, using default');
+      return 'America/Los_Angeles';
+    }
+
+    const data = await response.json();
+    return data.value || 'America/Los_Angeles';
+  } catch (error) {
+    console.error('Error fetching timezone:', error);
+    return 'America/Los_Angeles'; // Fallback
+  }
+}
+
+// Skip digest
+async function skipDigest() {
+  digestSection.classList.add('hidden');
+  await chrome.storage.local.set({ digestSkipped: true });
+  await chrome.storage.local.remove('pendingDigestSignup');
+}
+
+// Open settings page
+async function openDigestSettings() {
+  // Skip if credentials not configured
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+    alert('Supabase credentials not configured. Please update SUPABASE_URL and SUPABASE_ANON_KEY in popup.ts');
+    return;
+  }
+
+  const storage = await chrome.storage.local.get(['digestUserId']);
+  const userId = storage.digestUserId;
+
+  if (userId) {
+    chrome.tabs.create({
+      url: `${SUPABASE_URL}/functions/v1/settings-page?id=${userId}`
+    });
+  } else {
+    // Fallback - open without ID
+    chrome.tabs.create({
+      url: `${SUPABASE_URL}/functions/v1/settings-page`
+    });
+  }
+}
+
 // Event listeners
 authBtn.addEventListener('click', async () => {
   const token = await checkAuth();
   if (token) {
     isAuthenticated = true;
     showMainSection();
+    await showDigestSignup(); // Show digest signup after auth
     await checkCurrentPage();
   }
 });
@@ -225,6 +453,11 @@ authBtn.addEventListener('click', async () => {
 fetchBtn.addEventListener('click', fetchCourseData);
 syncBtn.addEventListener('click', syncToCalendar);
 logoutBtn.addEventListener('click', logout);
+
+// Digest event listeners
+enableDigestBtn.addEventListener('click', enableDigest);
+skipDigestBtn.addEventListener('click', skipDigest);
+digestSettingsBtn.addEventListener('click', openDigestSettings);
 
 // Initialize
 init();

@@ -22,6 +22,21 @@
     
     <!-- Main Section (shown when authenticated) -->
     <section id="main-section" class="hidden">
+      <!-- Digest Signup (shown after calendar connected) -->
+      <div id="digest-section" class="card hidden">
+        <h3>📬 Morning Digest</h3>
+        <p>Get a daily 8am email with everything due today and this week.</p>
+        <p class="email-preview" id="user-email"></p>
+        <div id="digest-signup">
+          <button id="enable-digest-btn" class="primary-btn">Enable Digest</button>
+          <button id="skip-digest-btn" class="text-btn">Skip</button>
+        </div>
+        <div id="digest-enabled" class="hidden">
+          <p class="success-msg">✓ Digest enabled! First email tomorrow 8am.</p>
+          <button id="digest-settings-btn" class="text-btn">Digest settings</button>
+        </div>
+      </div>
+
       <!-- Current Course -->
       <div id="current-course" class="card hidden">
         <h2 id="course-name">Loading...</h2>
