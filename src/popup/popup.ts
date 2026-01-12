@@ -478,15 +478,35 @@ async function openDigestSettings() {
   const storage = await chrome.storage.local.get(['digestUserId']);
   const userId = storage.digestUserId;
 
-  if (userId) {
-    chrome.tabs.create({
-      url: `${SUPABASE_URL}/functions/v1/settings-page?id=${userId}`
+  const url = userId 
+    ? `${SUPABASE_URL}/functions/v1/settings-page?id=${userId}`
+    : `${SUPABASE_URL}/functions/v1/settings-page`;
+
+  try {
+    // Fetch settings page with auth headers (required by Supabase gateway)
+    // Since chrome.tabs.create() can't include headers, we fetch first then display
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
     });
-  } else {
-    // Fallback - open without ID
-    chrome.tabs.create({
-      url: `${SUPABASE_URL}/functions/v1/settings-page`
-    });
+
+    if (response.ok) {
+      const html = await response.text();
+      // Create new tab with fetched HTML content
+      // Using data URL so we can include the HTML directly
+      const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+      chrome.tabs.create({ url: dataUrl });
+    } else {
+      // Fallback: try direct URL (may fail with 401, but worth trying)
+      console.warn('Failed to fetch settings page with auth, trying direct URL:', response.status);
+      chrome.tabs.create({ url });
+    }
+  } catch (error) {
+    // Fallback: try direct URL
+    console.error('Error fetching settings page:', error);
+    chrome.tabs.create({ url });
   }
 }
 

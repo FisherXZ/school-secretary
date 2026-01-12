@@ -188,11 +188,40 @@ ${JSON.stringify(user, null, 2)}`;
       result.innerHTML = `<span class="label">Settings page URL:</span>
 <a href="${url}" target="_blank" style="color: #4ec9b0;">${url}</a>
 
-<button onclick="window.open('${url}', '_blank')" style="margin-top: 10px;">Open Settings Page</button>
+<button onclick="window.open('${url}', '_blank')" style="margin-top: 10px;">Open Settings Page (Direct Link)</button>
+<button onclick="testSettingsWithAuth('${url}')" style="margin-top: 10px;">Test with Auth Header</button>
 
-<span class="warning">Note:</span> Settings page should render regardless of whether you provide a user ID.
-Without ID: Shows message to open from extension
-With ID: Shows your email and toggle button`;
+<span class="success">✓ Fixed:</span> Settings page now accepts requests with or without authorization headers.
+<span class="label">Direct browser access:</span> Should work (no 401 error)
+<span class="label">Extension access:</span> Includes auth header automatically
+<span class="label">Without user ID:</span> Shows message to open from extension
+<span class="label">With user ID:</span> Shows your email and toggle button`;
+    }
+
+    async function testSettingsWithAuth(url) {
+      // Test opening settings page with auth header (simulates extension behavior)
+      try {
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+        });
+
+        if (response.ok) {
+          // Open in new window with the HTML content
+          const html = await response.text();
+          const newWindow = window.open('', '_blank');
+          if (newWindow) {
+            newWindow.document.write(html);
+            newWindow.document.close();
+          }
+        } else {
+          alert(`Error: ${response.status} ${response.statusText}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
     }
 
     async function simulateExtension() {

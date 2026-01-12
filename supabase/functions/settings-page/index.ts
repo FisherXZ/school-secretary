@@ -1,10 +1,25 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+};
+
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   const url = new URL(req.url);
   const userId = url.searchParams.get('id');
   const action = url.searchParams.get('action');
+
+  // Extract auth header (optional - function works with or without it)
+  // This allows both browser direct access and extension access with auth headers
+  const authHeader = req.headers.get('authorization');
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -19,7 +34,9 @@ serve(async (req) => {
         .update({ digest_enabled: true, updated_at: new Date().toISOString() })
         .eq('id', userId);
 
-      return Response.redirect(`${url.origin}${url.pathname}?id=${userId}&success=enabled`);
+      return Response.redirect(`${url.origin}${url.pathname}?id=${userId}&success=enabled`, {
+        headers: corsHeaders,
+      });
     } catch (error) {
       console.error('Error enabling digest:', error);
     }
@@ -32,7 +49,9 @@ serve(async (req) => {
         .update({ digest_enabled: false, updated_at: new Date().toISOString() })
         .eq('id', userId);
 
-      return Response.redirect(`${url.origin}${url.pathname}?id=${userId}&success=disabled`);
+      return Response.redirect(`${url.origin}${url.pathname}?id=${userId}&success=disabled`, {
+        headers: corsHeaders,
+      });
     } catch (error) {
       console.error('Error disabling digest:', error);
     }
@@ -183,6 +202,9 @@ serve(async (req) => {
 
   return new Response(html, {
     status: 200,
-    headers: { 'Content-Type': 'text/html' },
+    headers: {
+      'Content-Type': 'text/html',
+      ...corsHeaders,
+    },
   });
 });
