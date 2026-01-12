@@ -11,7 +11,7 @@ const digestSection = document.getElementById('digest-section')!;
 const userEmailEl = document.getElementById('user-email')!;
 const digestSignup = document.getElementById('digest-signup')!;
 const digestEnabled = document.getElementById('digest-enabled')!;
-const enableDigestBtn = document.getElementById('enable-digest-btn')!;
+const enableDigestBtn = document.getElementById('enable-digest-btn')! as HTMLButtonElement;
 const skipDigestBtn = document.getElementById('skip-digest-btn')!;
 const digestSettingsBtn = document.getElementById('digest-settings-btn')!;
 const currentCourse = document.getElementById('current-course')!;
@@ -19,16 +19,16 @@ const noCourse = document.getElementById('no-course')!;
 const courseName = document.getElementById('course-name')!;
 const courseCode = document.getElementById('course-code')!;
 const assignmentCount = document.getElementById('assignment-count')!;
-const fetchBtn = document.getElementById('fetch-btn')!;
+const fetchBtn = document.getElementById('fetch-btn')! as HTMLButtonElement;
 const assignmentsSection = document.getElementById('assignments-section')!;
 const assignmentList = document.getElementById('assignment-list')!;
-const syncBtn = document.getElementById('sync-btn')!;
+const syncBtn = document.getElementById('sync-btn')! as HTMLButtonElement;
 const status = document.getElementById('status')!;
 
 // Supabase config
 // TODO: Replace these with your actual Supabase credentials from the Supabase dashboard
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // e.g., 'https://abcdefghij.supabase.co'
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Get from Settings → API
+const SUPABASE_URL = 'https://qguiewlbiopbsgfzpcrt.supabase.co'; // e.g., 'https://abcdefghij.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFndWlld2xiaW9wYnNnZnpwY3J0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNjUyOTAsImV4cCI6MjA4Mzc0MTI5MH0.YBxCYHVOnw-KmSF6-GUMSu4HyG2QVC3KdtlkgREkBLg'; // Get from Settings → API
 
 // Google OAuth config (from manifest.json)
 const GOOGLE_CLIENT_ID = '862922347346-q22513216dpmfuu54pp0vdp9jgengarc.apps.googleusercontent.com';
@@ -292,9 +292,6 @@ async function showDigestSignup() {
 
 // Check if user already exists in Supabase
 async function checkExistingUser(email: string): Promise<boolean> {
-  // Skip check if credentials not configured
-  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') return false;
-
   try {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=id,digest_enabled`,
@@ -418,12 +415,6 @@ async function skipDigest() {
 
 // Open settings page
 async function openDigestSettings() {
-  // Skip if credentials not configured
-  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-    alert('Supabase credentials not configured. Please update SUPABASE_URL and SUPABASE_ANON_KEY in popup.ts');
-    return;
-  }
-
   const storage = await chrome.storage.local.get(['digestUserId']);
   const userId = storage.digestUserId;
 
