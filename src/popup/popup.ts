@@ -232,6 +232,64 @@ function hideStatus() {
 // Digest Functionality
 // ============================================================================
 
+// Check digest status from database (source of truth)
+async function checkDigestStatus(): Promise<{ enabled: boolean; email?: string }> {
+  // Skip check if Supabase not configured
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+    return { enabled: false };
+  }
+
+  // Get local cache
+  const storage = await chrome.storage.local.get(['digestEmail', 'digestUserId']);
+
+  if (!storage.digestEmail) {
+    // Never signed up
+    return { enabled: false };
+  }
+
+  try {
+    // Check actual status from database (source of truth)
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(storage.digestEmail)}&select=digest_enabled,id`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Failed to check digest status:', response.status);
+      // Fallback to local cache on error
+      return { enabled: storage.digestEnabled || false, email: storage.digestEmail };
+    }
+
+    const data = await response.json();
+
+    if (data.length > 0) {
+      const actualStatus = data[0].digest_enabled;
+      const userId = data[0].id;
+
+      // Update local cache to match database (source of truth)
+      await chrome.storage.local.set({
+        digestEnabled: actualStatus,
+        digestUserId: userId,
+      });
+
+      return { enabled: actualStatus, email: storage.digestEmail };
+    } else {
+      // User not in database, clear local cache
+      await chrome.storage.local.remove(['digestEnabled', 'digestUserId']);
+      return { enabled: false };
+    }
+  } catch (error) {
+    console.error('Error checking digest status:', error);
+    // Fallback to local cache on error
+    return { enabled: storage.digestEnabled || false, email: storage.digestEmail };
+  }
+}
+
 // Get user's email from Google
 async function getUserEmail(token: string): Promise<string | null> {
   try {
@@ -251,17 +309,25 @@ async function getUserEmail(token: string): Promise<string | null> {
 
 // Show digest signup prompt
 async function showDigestSignup() {
-  // Check if user already skipped or enabled digest
-  const storage = await chrome.storage.local.get(['digestSkipped', 'digestEnabled']);
+  // Check digest status from database (source of truth)
+  const status = await checkDigestStatus();
 
-  if (storage.digestSkipped || storage.digestEnabled) {
-    // Already made a choice, don't show again
-    if (storage.digestEnabled) {
-      // Show that digest is enabled
-      digestSection.classList.remove('hidden');
-      digestSignup.classList.add('hidden');
-      digestEnabled.classList.remove('hidden');
+  if (status.enabled) {
+    // User has digest enabled (verified from database)
+    digestSection.classList.remove('hidden');
+    digestSignup.classList.add('hidden');
+    digestEnabled.classList.remove('hidden');
+    if (status.email) {
+      userEmailEl.textContent = status.email;
     }
+    return;
+  }
+
+  // Check if user already skipped
+  const storage = await chrome.storage.local.get(['digestSkipped']);
+
+  if (storage.digestSkipped) {
+    // User previously chose to skip
     return;
   }
 
