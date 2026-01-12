@@ -109,3 +109,115 @@ Supabase Edge Functions support JWT verification settings. We need to:
 **Status**: ✅ Config created, pending deployment
 
 ---
+
+## Next Steps for User
+
+### Immediate Action Required
+1. **Deploy functions** using Supabase CLI:
+   ```bash
+   supabase functions deploy settings-page
+   supabase functions deploy unsubscribe
+   ```
+
+2. **Test settings page**:
+   - Open extension → Click "Digest Settings"
+   - Should load without 401 error
+
+3. **Verify functionality**:
+   - Toggle digest on/off
+   - Check database updates
+   - Test database sync
+
+### Detailed Instructions
+See `DEPLOY_FIX_401.md` for:
+- Complete deployment steps
+- Testing procedures
+- Troubleshooting guide
+- Rollback plan if needed
+
+---
+
+## Test Results Summary
+
+| Test | Status | Result |
+|------|--------|--------|
+| Diagnose 401 cause | ✅ Complete | JWT verification required by default |
+| Create fix (deno.json) | ✅ Complete | Config files created for both functions |
+| Deployment | ⏳ Pending | User must deploy tomorrow |
+| Verification | ⏳ Pending | User must test after deployment |
+
+---
+
+## Technical Details
+
+### What `verify_jwt: false` Does
+- Disables Supabase API Gateway's JWT verification for this function
+- Allows anonymous HTTP requests to reach the function
+- Function still uses service role key for database access
+- Security maintained through:
+  - UUID validation for user IDs
+  - Server-side database queries
+  - Limited scope (only toggle digest setting)
+
+### Files Changed
+```
+supabase/functions/settings-page/deno.json (NEW)
+supabase/functions/unsubscribe/deno.json (NEW)
+```
+
+### No Changes Needed To:
+- `index.ts` files (function logic unchanged)
+- Extension code (already correct)
+- Database schema
+- Other functions (signup-user, send-digest)
+
+---
+
+## Alternative Solutions Considered
+
+### ❌ Option 1: Pass auth in URL
+```javascript
+chrome.tabs.create({
+  url: `${SUPABASE_URL}/functions/v1/settings-page?id=${userId}&apikey=${ANON_KEY}`
+});
+```
+**Rejected**: Security risk (API key visible in URL, browser history, logs)
+
+### ❌ Option 2: Use POST request
+Create an HTML page in extension that POSTs to function with auth header.
+**Rejected**: Too complex for simple settings page
+
+### ✅ Option 3: Disable JWT verification (CHOSEN)
+**Pros**:
+- Simple configuration change
+- No code changes needed
+- Standard Supabase pattern for web pages
+- Maintains security through other mechanisms
+
+---
+
+## Confidence Level: 95%
+
+**Why 95%?**
+- ✅ Root cause clearly identified
+- ✅ Solution is standard Supabase practice
+- ✅ Config files correctly formatted
+- ✅ Both affected functions updated
+- ⚠️ 5% uncertainty: Supabase version differences, project-specific settings
+
+**If this doesn't work**, next steps:
+1. Check Supabase CLI version
+2. Verify project settings allow JWT override
+3. Try alternative import map approach
+4. Contact Supabase support for project-specific guidance
+
+---
+
+## Commit Hash
+```
+075c4f4 - Fix 401 error: Disable JWT verification for publicly accessible functions
+```
+
+Ready to merge after successful testing.
+
+---
