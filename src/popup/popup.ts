@@ -41,6 +41,11 @@ async function init() {
 async function checkAuth(): Promise<string | null> {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({ type: 'AUTHENTICATE' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Auth check failed:', chrome.runtime.lastError.message);
+        resolve(null);
+        return;
+      }
       resolve(response?.success ? response.token : null);
     });
   });
