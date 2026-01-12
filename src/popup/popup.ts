@@ -26,7 +26,6 @@ const syncBtn = document.getElementById('sync-btn')! as HTMLButtonElement;
 const status = document.getElementById('status')!;
 
 // Supabase config
-// TODO: Replace these with your actual Supabase credentials from the Supabase dashboard
 const SUPABASE_URL = 'https://qguiewlbiopbsgfzpcrt.supabase.co'; // e.g., 'https://abcdefghij.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFndWlld2xiaW9wYnNnZnpwY3J0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNjUyOTAsImV4cCI6MjA4Mzc0MTI5MH0.YBxCYHVOnw-KmSF6-GUMSu4HyG2QVC3KdtlkgREkBLg'; // Get from Settings → API
 
