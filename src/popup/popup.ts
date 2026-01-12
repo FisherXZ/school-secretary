@@ -234,11 +234,6 @@ function hideStatus() {
 
 // Check digest status from database (source of truth)
 async function checkDigestStatus(): Promise<{ enabled: boolean; email?: string }> {
-  // Skip check if Supabase not configured
-  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-    return { enabled: false };
-  }
-
   // Get local cache
   const storage = await chrome.storage.local.get(['digestEmail', 'digestUserId']);
 
