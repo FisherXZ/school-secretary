@@ -162,6 +162,111 @@ abc-123 | token_refreshed  | 2024-01-13 08:00am | {"success": true}          | c
 
 ---
 
+## Layer 2: OAuth & Email Infrastructure
+
+### Implement Proper OAuth2 Flow for Refresh Tokens
+**Location**: `src/popup/popup.ts:401`
+
+**Current state**: Extension stores access tokens instead of refresh tokens
+```typescript
+const refreshToken = token; // FIXME: This should be a real refresh token
+```
+
+**Problem**:
+- `chrome.identity.getAuthToken()` only provides access tokens (short-lived, ~1 hour)
+- Access tokens cannot be used to refresh - only refresh tokens can
+- Backend `send-digest` function fails with `invalid_grant` when trying to refresh
+- Currently requires manual refresh token via OAuth Playground for testing
+
+**Recommendation**: Implement full OAuth2 flow using `chrome.identity.launchWebAuthFlow()`
+
+**Implementation**:
+```typescript
+// Replace getAuthToken() with launchWebAuthFlow()
+const redirectUrl = chrome.identity.getRedirectURL();
+const clientId = GOOGLE_CLIENT_ID;
+const scopes = [
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/calendar.settings.readonly'
+].join(' ');
+
+const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+  `client_id=${clientId}&` +
+  `redirect_uri=${encodeURIComponent(redirectUrl)}&` +
+  `response_type=code&` +
+  `scope=${encodeURIComponent(scopes)}&` +
+  `access_type=offline&` +  // Required for refresh token
+  `prompt=consent`;  // Force consent screen to get refresh token
+
+const responseUrl = await chrome.identity.launchWebAuthFlow({
+  url: authUrl,
+  interactive: true
+});
+
+// Extract authorization code from responseUrl
+// Exchange code for tokens (including refresh_token)
+// Store refresh_token in database via signup-user function
+```
+
+**Benefits**:
+- Automatic refresh token acquisition
+- No manual OAuth Playground steps needed
+- Production-ready authentication flow
+- Tokens persist across sessions
+
+**Complexity**: Medium (requires OAuth2 code exchange implementation)
+**Priority**: High (blocks production deployment)
+**Status**: Planned for Phase 1 (MVP)
+
+**References**:
+- Chrome Identity API: https://developer.chrome.com/docs/extensions/reference/identity/
+- Google OAuth2: https://developers.google.com/identity/protocols/oauth2
+
+---
+
+### Verify Custom Domain in Resend
+**Location**: Resend Dashboard, Edge Functions `from` addresses
+
+**Current state**: Using test domain `onboarding@resend.dev`
+- Limited to sending to account owner's email (`fisher262425@gmail.com`)
+- Cannot send to other email addresses
+- May have deliverability issues (emails go to spam)
+
+**Problem**:
+- Test domain restrictions prevent sending to real users
+- Not suitable for production use
+- Users cannot receive digest emails
+
+**Recommendation**: Verify a custom domain in Resend
+
+**Implementation**:
+1. Go to [Resend Dashboard → Domains](https://resend.com/domains)
+2. Click "Add Domain"
+3. Enter your domain (e.g., `schoolsecretary.com` or subdomain like `digest.yourdomain.com`)
+4. Add DNS records as shown:
+   - TXT record for domain verification
+   - CNAME record for DKIM
+   - MX record (if needed)
+5. Wait for verification (5-30 minutes)
+6. Update Edge Functions `from` addresses:
+   - `supabase/functions/signup-user/index.ts:114`
+   - `supabase/functions/send-digest/index.ts:289`
+   - Change from: `'AI-secretary <onboarding@resend.dev>'`
+   - Change to: `'AI-secretary <digest@yourdomain.com>'`
+
+**Benefits**:
+- Can send to any email address
+- Better deliverability (less likely to go to spam)
+- Professional appearance
+- Production-ready
+
+**Complexity**: Low (DNS configuration + code update)
+**Priority**: High (required for production)
+**Status**: Planned for Phase 1 (MVP)
+
+---
+
 ## Layer 2: Multi-Timezone Support
 
 ### Phase 1: Document Current Limitations (MVP)
