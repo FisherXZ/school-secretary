@@ -111,7 +111,7 @@ We'll see you in the morning.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'school-secretary <digest@yourdomain.com>', // TODO: Update with your verified domain
+        from: 'AI-secretary <onboarding@resend.dev>', // TODO: Update with your verified domain
         to: email,
         subject: subject,
         text: body,
