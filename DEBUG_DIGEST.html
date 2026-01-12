@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Digest Debugger</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    h1 { color: #4ec9b0; margin-bottom: 20px; }
+    h2 { color: #dcdcaa; margin-top: 30px; margin-bottom: 10px; }
+    pre {
+      background: #2d2d2d;
+      border: 1px solid #404040;
+      border-radius: 4px;
+      padding: 15px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .success { color: #4ec9b0; }
+    .error { color: #f48771; }
+    .warning { color: #ce9178; }
+    button {
+      background: #0e639c;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px 5px 5px 0;
+    }
+    button:hover { background: #1177bb; }
+    .result { margin: 10px 0; }
+    .label { color: #9cdcfe; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Morning Digest Debugger</h1>
+  <p>This tool helps debug database sync and settings page issues.</p>
+
+  <h2>1. Configuration Check</h2>
+  <div id="config-check">
+    <button onclick="checkConfig()">Check Config</button>
+    <pre id="config-result">Click button to check...</pre>
+  </div>
+
+  <h2>2. Database Connection Test</h2>
+  <div id="db-test">
+    <button onclick="testDatabase()">Test Database Connection</button>
+    <pre id="db-result">Click button to test...</pre>
+  </div>
+
+  <h2>3. Check Your User Record</h2>
+  <div id="user-check">
+    <input type="text" id="email-input" placeholder="your@email.com" style="padding: 8px; width: 300px; background: #2d2d2d; border: 1px solid #404040; color: #d4d4d4; border-radius: 4px;">
+    <button onclick="checkUser()">Check User</button>
+    <pre id="user-result">Enter your email and click button...</pre>
+  </div>
+
+  <h2>4. Test Settings Page URL</h2>
+  <div id="settings-test">
+    <input type="text" id="userid-input" placeholder="user-id (optional)" style="padding: 8px; width: 300px; background: #2d2d2d; border: 1px solid #404040; color: #d4d4d4; border-radius: 4px;">
+    <button onclick="testSettings()">Generate Settings URL</button>
+    <pre id="settings-result">Enter user ID (optional) and click button...</pre>
+  </div>
+
+  <h2>5. Simulate Extension Logic</h2>
+  <div id="extension-sim">
+    <button onclick="simulateExtension()">Simulate Database Sync</button>
+    <pre id="extension-result">Click button to simulate...</pre>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://qguiewlbiopbsgfzpcrt.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFndWlld2xiaW9wYnNnZnpwY3J0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNjUyOTAsImV4cCI6MjA4Mzc0MTI5MH0.YBxCYHVOnw-KmSF6-GUMSu4HyG2QVC3KdtlkgREkBLg';
+
+    function checkConfig() {
+      const result = document.getElementById('config-result');
+      result.innerHTML = `<span class="label">SUPABASE_URL:</span> ${SUPABASE_URL}
+<span class="label">SUPABASE_ANON_KEY:</span> ${SUPABASE_ANON_KEY.substring(0, 50)}...
+<span class="label">Key length:</span> ${SUPABASE_ANON_KEY.length} characters
+
+<span class="success">✓ Config loaded</span>`;
+    }
+
+    async function testDatabase() {
+      const result = document.getElementById('db-result');
+      result.innerHTML = 'Testing connection...';
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/users?select=id`,
+          {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          result.innerHTML = `<span class="error">✗ Database connection failed</span>
+<span class="label">Status:</span> ${response.status} ${response.statusText}
+<span class="label">Response:</span> ${await response.text()}`;
+          return;
+        }
+
+        const data = await response.json();
+        result.innerHTML = `<span class="success">✓ Database connection successful</span>
+<span class="label">Total users in database:</span> ${data.length}
+<span class="label">Response:</span> ${JSON.stringify(data, null, 2)}`;
+
+      } catch (error) {
+        result.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+      }
+    }
+
+    async function checkUser() {
+      const email = document.getElementById('email-input').value.trim();
+      const result = document.getElementById('user-result');
+
+      if (!email) {
+        result.innerHTML = '<span class="warning">Please enter your email address</span>';
+        return;
+      }
+
+      result.innerHTML = `Checking user: ${email}...`;
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=*`,
+          {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          result.innerHTML = `<span class="error">✗ Query failed</span>
+<span class="label">Status:</span> ${response.status} ${response.statusText}`;
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.length === 0) {
+          result.innerHTML = `<span class="warning">⚠ User not found in database</span>
+<span class="label">Email:</span> ${email}
+
+This means you haven't signed up for the digest yet.`;
+          return;
+        }
+
+        const user = data[0];
+        result.innerHTML = `<span class="success">✓ User found</span>
+<span class="label">Email:</span> ${user.email}
+<span class="label">User ID:</span> ${user.id}
+<span class="label">Digest Enabled:</span> ${user.digest_enabled ? '<span class="success">true</span>' : '<span class="error">false</span>'}
+<span class="label">Timezone:</span> ${user.timezone}
+<span class="label">Created:</span> ${new Date(user.created_at).toLocaleString()}
+<span class="label">Updated:</span> ${new Date(user.updated_at).toLocaleString()}
+
+<span class="label">Full record:</span>
+${JSON.stringify(user, null, 2)}`;
+
+      } catch (error) {
+        result.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+      }
+    }
+
+    function testSettings() {
+      const userId = document.getElementById('userid-input').value.trim();
+      const result = document.getElementById('settings-result');
+
+      let url;
+      if (userId) {
+        url = `${SUPABASE_URL}/functions/v1/settings-page?id=${userId}`;
+      } else {
+        url = `${SUPABASE_URL}/functions/v1/settings-page`;
+      }
+
+      result.innerHTML = `<span class="label">Settings page URL:</span>
+<a href="${url}" target="_blank" style="color: #4ec9b0;">${url}</a>
+
+<button onclick="window.open('${url}', '_blank')" style="margin-top: 10px;">Open Settings Page</button>
+
+<span class="warning">Note:</span> Settings page should render regardless of whether you provide a user ID.
+Without ID: Shows message to open from extension
+With ID: Shows your email and toggle button`;
+    }
+
+    async function simulateExtension() {
+      const result = document.getElementById('extension-result');
+      result.innerHTML = 'Simulating extension database sync...';
+
+      // This simulates what the extension does in checkDigestStatus()
+      const email = document.getElementById('email-input').value.trim();
+
+      if (!email) {
+        result.innerHTML = '<span class="warning">Please enter your email in the "Check Your User Record" section first</span>';
+        return;
+      }
+
+      try {
+        // Step 1: Query database (source of truth)
+        result.innerHTML += '\n\n<span class="label">Step 1:</span> Querying database...';
+
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=digest_enabled,id`,
+          {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          result.innerHTML += `\n<span class="error">✗ Query failed: ${response.status}</span>`;
+          result.innerHTML += '\n\n<span class="warning">Extension would fall back to local cache</span>';
+          return;
+        }
+
+        const data = await response.json();
+        result.innerHTML += '\n<span class="success">✓ Query successful</span>';
+
+        if (data.length === 0) {
+          result.innerHTML += '\n\n<span class="warning">User not in database</span>';
+          result.innerHTML += '\n<span class="label">Extension would:</span>';
+          result.innerHTML += '\n  - Clear local digestEnabled flag';
+          result.innerHTML += '\n  - Clear local digestUserId';
+          result.innerHTML += '\n  - Show "Enable Digest" button';
+          return;
+        }
+
+        // Step 2: Extract data
+        const actualStatus = data[0].digest_enabled;
+        const userId = data[0].id;
+
+        result.innerHTML += '\n\n<span class="label">Step 2:</span> Extract values from database:';
+        result.innerHTML += `\n  digest_enabled: ${actualStatus ? '<span class="success">true</span>' : '<span class="error">false</span>'}`;
+        result.innerHTML += `\n  user_id: ${userId}`;
+
+        // Step 3: Update local cache
+        result.innerHTML += '\n\n<span class="label">Step 3:</span> Update local cache (in extension, this would update chrome.storage.local):';
+        result.innerHTML += `\n  digestEnabled = ${actualStatus}`;
+        result.innerHTML += `\n  digestUserId = "${userId}"`;
+        result.innerHTML += `\n  digestEmail = "${email}"`;
+
+        // Step 4: UI decision
+        result.innerHTML += '\n\n<span class="label">Step 4:</span> UI Decision:';
+        if (actualStatus) {
+          result.innerHTML += '\n  <span class="success">Show "Digest Settings" button</span>';
+          result.innerHTML += `\n  Show email: ${email}`;
+        } else {
+          result.innerHTML += '\n  <span class="warning">Show "Enable Digest" button</span>';
+        }
+
+        result.innerHTML += '\n\n<span class="success">✓ Simulation complete</span>';
+        result.innerHTML += '\n\nIf extension is not behaving like this, check:';
+        result.innerHTML += '\n  1. Extension was reloaded after build';
+        result.innerHTML += '\n  2. No console errors in extension DevTools';
+        result.innerHTML += '\n  3. SUPABASE_URL and SUPABASE_ANON_KEY are correct in popup.ts';
+
+      } catch (error) {
+        result.innerHTML += `\n\n<span class="error">✗ Error: ${error.message}</span>`;
+      }
+    }
+  </script>
+</body>
+</html>
